@@ -1,0 +1,70 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/scripts/protect-paths.sh",
+            "timeout": 15,
+            "statusMessage": "Checking protected paths"
+          }
+        ]
+      },
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are a PreToolUse hook. The hook input JSON is: $ARGUMENTS\n\nDecide whether this edit weakens a test during a bug fix. Deny only when BOTH hold: (a) tool_input.file_path matches this repo's test-file pattern (TODO: e.g. *.test.ts, *_test.py, tests/**), and (b) the session is fixing a bug rather than adding or updating tests for new behaviour. A test that existed before the fix is the proof the bug existed, so the fix must satisfy it rather than change it. Allow the edit when the task is explicitly to add or update tests, or when the user has said the test's expectation is wrong.\n\nRespond with JSON only:\n{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"allow\"}}\nor\n{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"permissionDecision\":\"deny\",\"permissionDecisionReason\":\"<why, and what the test asserts>\"}}",
+            "timeout": 30,
+            "statusMessage": "Checking test protection"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/scripts/block-credentials.sh",
+            "timeout": 15,
+            "statusMessage": "Checking for credential access"
+          },
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/scripts/require-release-auth.sh",
+            "timeout": 15,
+            "statusMessage": "Checking release authorization"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PROJECT_DIR}\"/.claude/hooks/scripts/format-file.sh",
+            "timeout": 60,
+            "statusMessage": "Formatting"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are a Stop hook. The hook input JSON is: $ARGUMENTS\n\nCheck the definition of done before this session finishes: were the build, the tests, and the linter run and green? If any was not run or is failing, the session is not done — say exactly which. If CLAUDE.md, a skill, a hook, or REVIEW.md was changed in this session, state whether the eval suite was run.\n\nRespond with JSON only:\n{\"hookSpecificOutput\":{\"hookEventName\":\"Stop\",\"additionalContext\":\"<what still needs running, or 'all checks green'>\"}}",
+            "timeout": 30,
+            "statusMessage": "Checking definition of done"
+          }
+        ]
+      }
+    ]
+  }
+}

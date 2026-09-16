@@ -1,0 +1,5 @@
+# Keep shell scripts LF-terminated regardless of the platform they are
+# committed from. A CRLF line ending in a hook script breaks it on Linux.
+* text=auto eol=lf
+*.png binary
+*.jpg binary

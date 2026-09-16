@@ -1,0 +1,67 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  schema:
+    name: File formats
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install PyYAML
+        run: pip install pyyaml
+
+      - name: Validate every file against its schema
+        run: python3 scripts/validate.py
+
+  hooks:
+    name: Hook behaviour
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Protected path is denied
+        run: |
+          out=$(echo '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"db/migrations/001.sql"}}' \
+            | bash templates/hooks/scripts/protect-paths.sh)
+          echo "$out"
+          echo "$out" | grep -q '"permissionDecision": *"deny"'
+
+      - name: Ordinary path is allowed
+        run: |
+          out=$(echo '{"hook_event_name":"PreToolUse","tool_name":"Edit","tool_input":{"file_path":"src/app.ts"}}' \
+            | bash templates/hooks/scripts/protect-paths.sh)
+          echo "$out"
+          echo "$out" | grep -q '"permissionDecision": *"allow"'
+
+      - name: Credential read is denied
+        run: |
+          out=$(echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cat .env"}}' \
+            | bash templates/hooks/scripts/block-credentials.sh)
+          echo "$out"
+          echo "$out" | grep -q '"permissionDecision": *"deny"'
+
+      - name: Unauthorized production deploy is denied
+        run: |
+          out=$(echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"make deploy-production"}}' \
+            | bash templates/hooks/scripts/require-release-auth.sh)
+          echo "$out"
+          echo "$out" | grep -q '"permissionDecision": *"deny"'
+
+      - name: Authorized production deploy is allowed
+        env:
+          RELEASE_AUTHORIZED_BY: CI Release Manager
+        run: |
+          out=$(echo '{"hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"make deploy-production"}}' \
+            | bash templates/hooks/scripts/require-release-auth.sh)
+          echo "$out"
+          echo "$out" | grep -q '"permissionDecision": *"allow"'

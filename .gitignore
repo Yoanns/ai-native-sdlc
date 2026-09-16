@@ -1,0 +1,7 @@
+evals/results/
+templates/evals/results/
+.sdlc/.monitor/
+.DS_Store
+Thumbs.db
+*.plugin
+__pycache__/
