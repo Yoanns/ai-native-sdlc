@@ -43,15 +43,22 @@ It needs write access to the mirror repository, granted once:
 
 1. Create the repository `yoanns/agent-native-sdlc` on GitHub — empty, no
    README, licence or `.gitignore`.
-2. Generate a key pair, with no passphrase:
+2. Generate a key pair with no passphrase — press Enter twice when asked for
+   one:
    ```bash
-   ssh-keygen -t ed25519 -N "" -C "ai-native-sdlc mirror" -f mirror_key
+   ssh-keygen -t ed25519 -C "ai-native-sdlc mirror" -f mirror_key
    ```
+   Do not pass `-N ""` from Windows PowerShell: it drops the empty argument,
+   so `ssh-keygen` takes the next word as the passphrase and CI cannot use the
+   key.
 3. In **agent-native-sdlc** → Settings → Deploy keys → Add deploy key: paste
-   `mirror_key.pub`, tick **Allow write access**.
+   the **public** key, `mirror_key.pub` — one line starting `ssh-ed25519` —
+   and tick **Allow write access**. In PowerShell:
+   `Get-Content mirror_key.pub | Set-Clipboard`
 4. In **ai-native-sdlc** → Settings → Secrets and variables → Actions → New
-   repository secret: name `MIRROR_DEPLOY_KEY`, value the contents of
-   `mirror_key` (the private key).
+   repository secret: name `MIRROR_DEPLOY_KEY`, value the **private** key,
+   `mirror_key` — from `-----BEGIN OPENSSH PRIVATE KEY-----` to the END line.
+   In PowerShell: `Get-Content mirror_key -Raw | Set-Clipboard`
 5. Delete both key files from your machine. Run the workflow once from the
    Actions tab, or push to `main`.
 

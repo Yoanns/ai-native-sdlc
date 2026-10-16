@@ -2,7 +2,8 @@
 #
 # One-time setup — see mirror/README.md:
 #   1. Create the empty repository yoanns/agent-native-sdlc on GitHub.
-#   2. Generate a key pair:  ssh-keygen -t ed25519 -N "" -f mirror_key
+#   2. Generate a key pair with no passphrase (press Enter twice):
+#        ssh-keygen -t ed25519 -f mirror_key
 #   3. In agent-native-sdlc → Settings → Deploy keys, add mirror_key.pub
 #      with "Allow write access".
 #   4. In this repository → Settings → Secrets → Actions, add the private key
