@@ -1,0 +1,158 @@
+# Agent-Native SDLC
+
+The AI-native software lifecycle for **Cursor, GitHub Copilot, Codex, Gemini
+CLI, Aider and any agent that reads `AGENTS.md`**. Each stage reads the
+artifact the previous stage committed and commits its own; together they are
+the audit trail. Humans sit at the gates between stages, not inside every step.
+
+```
+request ──▶ 1 SPEC ──▶ 2 BUILD ──▶ 3 TEST ──▶ 4 DEPLOY ──▶ 5 MAINTAIN ──┐
+             spec.md    plan.md     green      review.md     finding     │
+             ▲                                                            │
+             └────────────────────── new spec ◀───────────────────────────┘
+```
+
+> **This repository is generated.** It is built from
+> [{{source_repo}}](https://github.com/{{source_repo}}) — the Claude Code
+> version — and synced on every change there. Version {{version}}, source
+> commit `{{source_commit}}`. Open issues and pull requests on the source
+> repository; changes made here are overwritten.
+>
+> **Using Claude Code?** Install [ai-native-sdlc](https://github.com/{{source_repo}})
+> instead. It runs the same lifecycle with more: stage skills that load on
+> demand, parallel review subagents, and hooks that can ask a model.
+
+---
+
+## Install
+
+```bash
+git clone https://github.com/{{mirror_repo}}.git
+python3 agent-native-sdlc/install.py /path/to/your/repo
+```
+
+The installer detects which agents the repository uses and installs what each
+one reads. Name them explicitly with `--agents cursor,copilot`, or preview with
+`--dry-run`. It merges rather than overwrites — an existing `AGENTS.md`,
+`.cursor/hooks.json` or Gemini settings keep their contents — and re-running it
+is how you update.
+
+Then open the repository with your agent and say:
+
+> set up the SDLC
+
+It follows `.sdlc/playbook/setup.md`: reads the repo, fills in `AGENTS.md`,
+tailors the guards, and lists every decision still open.
+
+**Requirements:** Python 3.9+ and git. The guards are bash scripts; on Windows
+they need `bash` on the path, which Git for Windows provides.
+
+---
+
+## What each agent gets
+
+| Agent | Lifecycle instructions | Stage rules on demand | Guard hooks | Spec gate in CI |
+|---|---|---|---|---|
+| **Cursor** | `AGENTS.md` | `.cursor/rules/*.mdc` | `.cursor/hooks.json` | ✓ |
+| **GitHub Copilot** — VS Code, CLI, cloud agent | `AGENTS.md` | `.github/instructions/` | `.github/hooks/sdlc.json` | ✓ |
+| **Gemini CLI** | `AGENTS.md`, via `.gemini/settings.json` | through `AGENTS.md` | — | ✓ |
+| **Aider** | `AGENTS.md`, via `.aider.conf.yml` | through `AGENTS.md` | — | ✓ |
+| **Codex, Jules, Zed, Windsurf, Devin, Amp, Junie, opencode** and other `AGENTS.md` readers | `AGENTS.md` | through `AGENTS.md` | — | ✓ |
+
+"Through `AGENTS.md`" means the lifecycle block names the playbook file for
+each stage and tells the agent to read it before acting — every agent gets
+the procedures, the ones without conditional rules just get them by reference.
+
+The last column is the one that matters most. The **spec gate** runs in CI,
+not inside an agent: a pull request that changes code without an approved
+spec and plan fails, whichever tool wrote it. Make the check required in branch
+protection and it binds every agent — including ones not on this list — and
+every person.
+
+---
+
+## The five stages
+
+| # | Stage | Playbook | Produces |
+|---|---|---|---|
+| 1 | Spec | `.sdlc/playbook/1-spec.md` | `.sdlc/<slug>/spec.md` |
+| 2 | Build | `.sdlc/playbook/2-build.md` | `.sdlc/<slug>/plan.md`, then code |
+| 3 | Test | `.sdlc/playbook/3-test.md` | Green tests, build, lint |
+| 4 | Deploy | `.sdlc/playbook/4-deploy.md` | `.sdlc/<slug>/review.md`, a merged PR |
+| 5 | Maintain | `.sdlc/playbook/5-maintain.md` | A finding, promoted to a new spec |
+
+Routing, gate owners and autonomy tiers are in `.sdlc/playbook/README.md`.
+Review passes — bugs, security, spec conformance — are in
+`.sdlc/playbook/review-passes/`.
+
+## The rules that do not bend
+
+- **Nothing is built without an approved spec.** Nothing is coded without an
+  accepted plan. CI enforces it.
+- **The agent never approves its own work.** It writes, it reviews other
+  changes, a human approves.
+- **Production requires a named human authorization**, enforced by a guard.
+- **Tests are never weakened to go green.** For bugs: failing test first,
+  committed on its own, then the fix.
+- **Findings loop back as specs**, never as silent patches.
+
+---
+
+## How this differs from the Claude Code version
+
+Same lifecycle, same artifacts, same gates. The differences are in what can be
+enforced, and they are worth knowing before you rely on this:
+
+| | Claude Code version | This version |
+|---|---|---|
+| Stage instructions | Skills that load when the work matches | Rules (Cursor, Copilot) or `AGENTS.md` pointers |
+| Review passes | Three subagents in parallel | In parallel where the agent has subagents, otherwise in sequence |
+| Path, credential and release guards | Hooks | Hooks on Cursor and Copilot; the spec gate everywhere |
+| Test protection during a bug fix | A hook that asks a model | A rule — no deterministic equivalent |
+| Definition-of-done check | A hook that asks a model | A rule |
+| Permission and sandbox settings | Installed | Configure in your agent |
+| Eval suite | Runs on `claude plugin eval` | Principles and case shape only — no cross-agent runner exists |
+| Repo-level spec gate | Optional | Installed by default |
+
+The guards are the same scripts in both; each agent's hook configuration asks
+for its own output dialect. Hook payloads are not fully documented for every
+agent and tool, so trigger each guard once through your agent before trusting
+it — `.sdlc/playbook/setup.md` shows how.
+
+---
+
+## Layout
+
+```
+agent-native-sdlc/
+├── install.py              installs into a target repository
+├── playbook/               → .sdlc/playbook/   stage procedures, references, review passes
+├── templates/              → AGENTS.md, REVIEW.md, .sdlc/templates/
+├── guards/                 → .sdlc/guards/     one script per guard, every hook dialect
+├── enforcement/            → .sdlc/enforcement/, .github/workflows/sdlc-gate.yml, pre-push
+├── monitor/                → .sdlc/monitor/    metric watcher for stage 5
+├── adapters/               per-agent rules and hook configs
+├── SOURCES.md              everything read to build this, and what each source settled
+└── .mirror-source.json     the source commit this was generated from
+```
+
+## Customization
+
+Every organization-specific decision is marked `TODO:` in the file that needs
+it — the protected paths, the deploy commands, who authorizes a release, which
+review passes apply.
+
+```bash
+grep -rn "TODO:" AGENTS.md REVIEW.md .sdlc/
+```
+
+## Sources
+
+[SOURCES.md](SOURCES.md) records what was read to build both versions: the
+Anthropic playbook the lifecycle comes from, the Claude Code documentation, and
+the Cursor, Copilot, Gemini CLI and `AGENTS.md` documentation the adapters were
+checked against.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).

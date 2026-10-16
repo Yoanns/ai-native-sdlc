@@ -3,48 +3,31 @@
 # Development is free, staging is controlled, production is gated — this is
 # the gate.
 #
-# Input : hook JSON on stdin (uses tool_input.command)
-# Output: PreToolUse permissionDecision JSON on stdout
+# Input : the hook event JSON on stdin (uses the shell command)
+# Output: a decision in the calling agent's dialect — see hookio.py
 #
-# Copy to .claude/hooks/scripts/ and set DEPLOY_PATTERNS for this repo.
+# Copy this directory (with hookio.py) into the repo and set DEPLOY_PATTERNS.
 set -euo pipefail
 
-allow_with() {
-  python3 -c '
-import json,sys
-print(json.dumps({"hookSpecificOutput":{
-    "hookEventName":"PreToolUse",
-    "permissionDecision":"allow",
-    "permissionDecisionReason":sys.argv[1]}}))' "$1"
-  exit 0
-}
-
-allow() {
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}\n'
-  exit 0
-}
-
-deny() {
-  python3 -c '
-import json,sys
-print(json.dumps({"hookSpecificOutput":{
-    "hookEventName":"PreToolUse",
-    "permissionDecision":"deny",
-    "permissionDecisionReason":sys.argv[1]}}))' "$1"
-  exit 0
-}
+# Hook dialect: --format claude|cursor|copilot|exit, or SDLC_HOOK_FORMAT.
+# Defaults to claude. The policy below is the same in every dialect;
+# hookio.py reads the event and writes the decision the calling agent expects.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FORMAT="${SDLC_HOOK_FORMAT:-claude}"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --format)   FORMAT="${2:-}"; shift 2 ;;
+    --format=*) FORMAT="${1#*=}"; shift ;;
+    *)          shift ;;
+  esac
+done
 
 INPUT="$(cat)"
+field() { printf '%s' "$INPUT" | python3 "$DIR/hookio.py" field "$1"; }
+allow() { python3 "$DIR/hookio.py" emit "$FORMAT" allow "${1:-}"; exit $?; }
+deny()  { python3 "$DIR/hookio.py" emit "$FORMAT" deny "$1"; exit $?; }
 
-CMD="$(printf '%s' "$INPUT" | python3 -c '
-import json,sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    print(""); raise SystemExit
-print((d.get("tool_input") or {}).get("command",""))
-')"
-
+CMD="$(field command)"
 [ -z "$CMD" ] && allow
 
 # TODO: replace with the commands that actually reach production in this repo.
@@ -69,7 +52,7 @@ done
 # TODO: replace with your real authorization source — a signed release ticket,
 # a CI approval step, or an entry in the release log.
 if [ -n "${RELEASE_AUTHORIZED_BY:-}" ]; then
-  allow_with "Production release authorized by ${RELEASE_AUTHORIZED_BY}."
+  allow "Production release authorized by ${RELEASE_AUTHORIZED_BY}."
 fi
 
-deny "This is a production deploy and no named human authorization is present. A release manager must authorize it (set RELEASE_AUTHORIZED_BY, or run the approved release workflow). Claude cannot authorize its own deploy."
+deny "This is a production deploy and no named human authorization is present. A release manager must authorize it (set RELEASE_AUTHORIZED_BY, or run the approved release workflow). An AI agent cannot authorize its own deploy."

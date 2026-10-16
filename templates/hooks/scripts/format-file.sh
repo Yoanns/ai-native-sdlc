@@ -1,24 +1,19 @@
 #!/usr/bin/env bash
 # PostToolUse hook: formats the file that was just written, so style never
-# reaches review. PostToolUse cannot block — it formats and stays quiet.
+# reaches review. Post-edit hooks cannot block — this formats and stays quiet.
 #
-# Input : hook JSON on stdin (uses tool_input.file_path)
-# Output: nothing on success; exit 0 always, so a formatter failure never
-#         derails the session.
+# Input : the hook event JSON on stdin (uses the target file path)
+# Output: nothing; exit 0 always, so a formatter failure never derails the
+#         session. Works unchanged for Claude Code, Cursor (afterFileEdit) and
+#         Copilot (postToolUse).
 #
-# Copy to .claude/hooks/scripts/ and set the formatter for each extension.
+# Copy this directory (with hookio.py) into the repo and set the formatters.
 set -uo pipefail
 
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INPUT="$(cat)"
 
-FILE_PATH="$(printf '%s' "$INPUT" | python3 -c '
-import json,sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    print(""); raise SystemExit
-print((d.get("tool_input") or {}).get("file_path",""))
-')"
+FILE_PATH="$(printf '%s' "$INPUT" | python3 "$DIR/hookio.py" field file_path)"
 
 [ -z "$FILE_PATH" ] && exit 0
 [ -f "$FILE_PATH" ] || exit 0

@@ -138,11 +138,15 @@ What `sdlc-setup-guardrails` installs into a repository.
 | `hooks/scripts/block-credentials.sh` | `.claude/hooks/scripts/` | Denies commands that read credential material |
 | `hooks/scripts/require-release-auth.sh` | `.claude/hooks/scripts/` | Denies production deploys without a named human authorization |
 | `hooks/scripts/format-file.sh` | `.claude/hooks/scripts/` | Formats each written file, so style never reaches review |
+| `hooks/scripts/hookio.py` | `.claude/hooks/scripts/` | Reads the hook event and writes the decision in the calling agent's dialect — Claude Code by default, also Cursor and Copilot |
 | `hooks/README.md` | — | What each hook does, the stdin/stdout contract, and a one-line test for each |
 | `settings.json` | `.claude/settings.json` | Permissions, sandbox, network allowlist |
 | `SETTINGS.md` | — | The settings decisions that cannot be placeholders |
 | `monitor/watch-metrics.sh` | wherever the scheduler runs it | Deterministic metric watcher: decides whether to wake Claude, never what Claude concludes |
 | `evals/` | `evals/` | Three example cases in `claude plugin eval` format |
+| `enforcement/spec_gate.py` | `.sdlc/enforcement/` | **Optional.** Fails a change that touches code without an approved spec and plan. Runs in CI and before push, so it binds every tool and every person, not only Claude |
+| `enforcement/sdlc-gate.yml` | `.github/workflows/` | Runs the spec gate on pull requests — make it a required check |
+| `enforcement/pre-push` | `.git/hooks/` | Runs the spec gate before anything is pushed |
 
 ### Why two prompt hooks and four scripts
 
@@ -172,3 +176,14 @@ natural phrasing — fix the description, not the grader.
 claude plugin eval .
 claude plugin eval . --case no-self-approval --runs 1 --ablation none
 ```
+
+## The mirror
+
+[agent-native-sdlc](https://github.com/yoanns/agent-native-sdlc) carries the
+same lifecycle to Cursor, Copilot, Codex, Gemini CLI, Aider and other agents
+that read `AGENTS.md`. It is generated from this repository by
+`scripts/build_mirror.py`: the skills become a plain-markdown playbook, the
+guard scripts are copied unchanged, and the mirror-only pieces — its README,
+setup guide, adapter configs and installer — come from `mirror/overlay/`.
+`mirror/README.md` explains how to change it.
+

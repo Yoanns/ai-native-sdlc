@@ -65,3 +65,19 @@ jobs:
             | bash templates/hooks/scripts/require-release-auth.sh)
           echo "$out"
           echo "$out" | grep -q '"permissionDecision": *"allow"'
+
+  mirror:
+    name: Mirror, guards, spec gate, installer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run the tests
+        run: python3 scripts/test_mirror.py
+
+      - name: Build the mirror and check it
+        run: python3 scripts/build_mirror.py --out build/mirror

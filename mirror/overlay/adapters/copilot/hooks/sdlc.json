@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      { "type": "command", "bash": "bash .sdlc/guards/protect-paths.sh --format copilot", "timeoutSec": 15 },
+      { "type": "command", "bash": "bash .sdlc/guards/block-credentials.sh --format copilot", "timeoutSec": 15 },
+      { "type": "command", "bash": "bash .sdlc/guards/require-release-auth.sh --format copilot", "timeoutSec": 15 }
+    ],
+    "postToolUse": [
+      { "type": "command", "bash": "bash .sdlc/guards/format-file.sh", "timeoutSec": 60 }
+    ]
+  }
+}

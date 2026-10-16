@@ -1,39 +1,33 @@
 #!/usr/bin/env bash
 # PreToolUse hook: denies shell commands that would read credential material.
-# Settings deny direct reads; this catches indirect access through the shell.
+# Settings deny direct reads where the agent supports it; this catches
+# indirect access through the shell.
 #
-# Input : hook JSON on stdin (uses tool_input.command)
-# Output: PreToolUse permissionDecision JSON on stdout
+# Input : the hook event JSON on stdin (uses the shell command)
+# Output: a decision in the calling agent's dialect — see hookio.py
 #
-# Copy to .claude/hooks/scripts/ and extend PATTERNS for this repo.
+# Copy this directory (with hookio.py) into the repo and extend PATTERNS.
 set -euo pipefail
 
-allow() {
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}\n'
-  exit 0
-}
-
-deny() {
-  python3 -c '
-import json,sys
-print(json.dumps({"hookSpecificOutput":{
-    "hookEventName":"PreToolUse",
-    "permissionDecision":"deny",
-    "permissionDecisionReason":sys.argv[1]}}))' "$1"
-  exit 0
-}
+# Hook dialect: --format claude|cursor|copilot|exit, or SDLC_HOOK_FORMAT.
+# Defaults to claude. The policy below is the same in every dialect;
+# hookio.py reads the event and writes the decision the calling agent expects.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FORMAT="${SDLC_HOOK_FORMAT:-claude}"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --format)   FORMAT="${2:-}"; shift 2 ;;
+    --format=*) FORMAT="${1#*=}"; shift ;;
+    *)          shift ;;
+  esac
+done
 
 INPUT="$(cat)"
+field() { printf '%s' "$INPUT" | python3 "$DIR/hookio.py" field "$1"; }
+allow() { python3 "$DIR/hookio.py" emit "$FORMAT" allow "${1:-}"; exit $?; }
+deny()  { python3 "$DIR/hookio.py" emit "$FORMAT" deny "$1"; exit $?; }
 
-CMD="$(printf '%s' "$INPUT" | python3 -c '
-import json,sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    print(""); raise SystemExit
-print((d.get("tool_input") or {}).get("command",""))
-')"
-
+CMD="$(field command)"
 [ -z "$CMD" ] && allow
 
 # TODO: extend with this repo's credential locations and secret managers.

@@ -2,40 +2,38 @@
 # PreToolUse hook: denies agent edits to paths that must only change under
 # explicit human instruction.
 #
-# Input : hook JSON on stdin (uses tool_input.file_path)
-# Output: {"hookSpecificOutput":{"hookEventName":"PreToolUse",
-#          "permissionDecision":"allow"|"deny","permissionDecisionReason":"..."}}
+# Input : the hook event JSON on stdin (uses the target file path)
+# Output: a decision in the calling agent's dialect — see hookio.py
 #
-# Copy to .claude/hooks/scripts/ and edit PROTECTED below.
+# Copy this directory (with hookio.py) into the repo and edit PROTECTED below.
 set -euo pipefail
 
-allow() {
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow"}}\n'
-  exit 0
-}
-
-deny() {
-  python3 -c '
-import json,sys
-print(json.dumps({"hookSpecificOutput":{
-    "hookEventName":"PreToolUse",
-    "permissionDecision":"deny",
-    "permissionDecisionReason":sys.argv[1]}}))' "$1"
-  exit 0
-}
+# Hook dialect: --format claude|cursor|copilot|exit, or SDLC_HOOK_FORMAT.
+# Defaults to claude. The policy below is the same in every dialect;
+# hookio.py reads the event and writes the decision the calling agent expects.
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+FORMAT="${SDLC_HOOK_FORMAT:-claude}"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --format)   FORMAT="${2:-}"; shift 2 ;;
+    --format=*) FORMAT="${1#*=}"; shift ;;
+    *)          shift ;;
+  esac
+done
 
 INPUT="$(cat)"
+field() { printf '%s' "$INPUT" | python3 "$DIR/hookio.py" field "$1"; }
+allow() { python3 "$DIR/hookio.py" emit "$FORMAT" allow "${1:-}"; exit $?; }
+deny()  { python3 "$DIR/hookio.py" emit "$FORMAT" deny "$1"; exit $?; }
 
-FILE_PATH="$(printf '%s' "$INPUT" | python3 -c '
-import json,sys
-try:
-    d = json.load(sys.stdin)
-except Exception:
-    print(""); raise SystemExit
-print((d.get("tool_input") or {}).get("file_path",""))
-')"
-
+FILE_PATH="$(field file_path)"
 [ -z "$FILE_PATH" ] && allow
+
+# Agents whose hook config cannot filter by tool (Copilot) send every tool
+# call here, reads included. Only writes are policed; reading is not editing.
+if [ "$FORMAT" != "claude" ] && ! printf '%s' "$INPUT" | python3 "$DIR/hookio.py" writeish; then
+  allow
+fi
 
 # TODO: replace with this repo's real protected paths.
 PROTECTED=(
@@ -45,8 +43,12 @@ PROTECTED=(
   "vendor/"
   ".github/workflows/"
   "CLAUDE.md"
+  "AGENTS.md"
   "REVIEW.md"
   ".claude/"
+  ".cursor/"
+  ".github/hooks/"
+  ".sdlc/guards/"
 )
 
 for pattern in "${PROTECTED[@]}"; do

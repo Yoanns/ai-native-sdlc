@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      { "command": "bash .sdlc/guards/protect-paths.sh --format cursor", "matcher": "Write|Delete" },
+      { "command": "bash .sdlc/guards/block-credentials.sh --format cursor", "matcher": "Shell" },
+      { "command": "bash .sdlc/guards/require-release-auth.sh --format cursor", "matcher": "Shell" }
+    ],
+    "afterFileEdit": [
+      { "command": "bash .sdlc/guards/format-file.sh" }
+    ]
+  }
+}

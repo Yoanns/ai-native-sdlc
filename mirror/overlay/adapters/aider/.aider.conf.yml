@@ -1,0 +1,2 @@
+# Make Aider read the lifecycle instructions at the start of every session.
+read: AGENTS.md

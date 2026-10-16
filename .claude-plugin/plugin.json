@@ -1,7 +1,7 @@
 {
   "name": "ai-native-sdlc",
   "displayName": "AI-Native SDLC",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "A looped, artifact-driven software lifecycle: spec -> plan -> code -> review -> monitor, with human approval at every gate.",
   "author": {
     "name": "Yoann Senin"

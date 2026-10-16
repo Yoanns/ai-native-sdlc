@@ -1,0 +1,33 @@
+# Spec gate for pull requests. Install as .github/workflows/sdlc-gate.yml,
+# then make the "spec-gate" check required in branch protection — that is
+# what makes it binding for every agent and every person.
+name: sdlc-gate
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  spec-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Code changes need an approved spec and plan
+        env:
+          BASE_REF: ${{ github.base_ref }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          # A "Work-Item: <slug>" line in the PR description also ties the PR
+          # to a work item. Read from the environment, never interpolated.
+          items=$(printf '%s\n' "$PR_BODY" \
+            | sed -n 's/^[Ww]ork-[Ii]tem:[[:space:]]*\([A-Za-z0-9][A-Za-z0-9._-]*\).*$/--work-item \1/p')
+          python3 .sdlc/enforcement/spec_gate.py --base "origin/$BASE_REF" $items

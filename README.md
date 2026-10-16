@@ -16,17 +16,30 @@ Adapted from Anthropic's *AI-native SDLC playbook*. Every claim about file
 formats here was checked against the Claude Code documentation — see
 [SOURCES.md](SOURCES.md) for what was read and what each source contributed.
 
+> **Using Cursor, GitHub Copilot, Codex, Gemini CLI, Aider or another agent?**
+> [agent-native-sdlc](https://github.com/yoanns/agent-native-sdlc) is the same
+> lifecycle for any agent that reads `AGENTS.md`, generated from this
+> repository on every change. This version stays the fuller one: skills that
+> load on demand, parallel review subagents, and hooks that can ask a model.
+
 ---
 
 ## Install
+
+```
+/plugin install ai-native-sdlc --marketplace yoanns/ai-native-sdlc
+```
+
+That adds the marketplace and installs the plugin in one step (Claude Code
+2.1.275 or later). On earlier versions, use two:
 
 ```
 /plugin marketplace add yoanns/ai-native-sdlc
 /plugin install ai-native-sdlc@ai-native-sdlc
 ```
 
-The repository is its own marketplace, so those two lines are the whole
-installation. To update later:
+The repository is its own marketplace, so that is the whole installation. To
+update later:
 
 ```
 /plugin marketplace update ai-native-sdlc
@@ -165,7 +178,8 @@ ai-native-sdlc/
 ├── templates/                what sdlc-setup-guardrails installs into a repo
 ├── evals/                    eval suite for this plugin
 ├── docs/                     component reference and setup walkthrough
-├── scripts/                  validate.py, publish helpers
+├── scripts/                  validate.py, build_mirror.py, test_mirror.py
+├── mirror/                   content that exists only in agent-native-sdlc
 ├── CUSTOMIZE.md              every TODO marker and what it decides
 └── SOURCES.md                everything read to build this
 ```
@@ -199,12 +213,17 @@ plugin"*.
 claude plugin validate .claude-plugin/plugin.json   # manifest
 python3 scripts/validate.py                         # every file against its schema
 claude plugin eval .                                # behaviour, with and without the plugin
+python3 scripts/test_mirror.py                      # guards, spec gate, mirror build, installer
 ```
 
 `scripts/validate.py` checks skill and agent frontmatter keys against the
 documented sets, the hooks file shape and event names, permission-rule syntax,
 eval case and grader schemas, shell syntax, and that every
 `${CLAUDE_PLUGIN_ROOT}` reference resolves. CI runs it on every push.
+
+`scripts/test_mirror.py` runs every guard in every hook dialect, the spec gate
+against real git histories, the mirror build, and the installer. CI runs both,
+and on every push to `main` rebuilds and publishes the mirror.
 
 ---
 

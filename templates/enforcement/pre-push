@@ -1,0 +1,11 @@
+#!/bin/sh
+# Git pre-push hook: runs the spec gate before anything leaves the machine.
+# Install as .git/hooks/pre-push (the installer does this), or point
+# core.hooksPath at a directory containing it.
+#
+# Compares the whole branch against the default branch, so a feature branch
+# whose first commit added the approved spec passes on every later push.
+gate=".sdlc/enforcement/spec_gate.py"
+[ -f "$gate" ] || exit 0
+command -v python3 >/dev/null 2>&1 || { echo "spec gate: python3 not found, skipping" >&2; exit 0; }
+exec python3 "$gate"

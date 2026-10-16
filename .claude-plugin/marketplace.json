@@ -5,14 +5,14 @@
     "url": "https://github.com/yoanns"
   },
   "description": "The AI-native software lifecycle as an installable plugin: five gated stages, parallel review passes, and guardrail templates.",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "plugins": [
     {
       "name": "ai-native-sdlc",
       "source": "./",
       "displayName": "AI-Native SDLC",
       "description": "Runs work through spec -> plan -> code -> review -> monitor, committing an artifact at each stage and stopping at every human gate.",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Yoann Senin"
       },

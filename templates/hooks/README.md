@@ -13,8 +13,9 @@ Two supported homes for this configuration — pick one:
 2. **`.claude/hooks/hooks.json`** — keep it as its own file, with the same
    `{"hooks": {...}}` wrapper.
 
-Either way, copy `hooks/scripts/*.sh` to `.claude/hooks/scripts/` and
-`chmod +x` them.
+Either way, copy the whole `hooks/scripts/` directory to
+`.claude/hooks/scripts/` — the guards need `hookio.py` beside them — and
+`chmod +x` the scripts.
 
 ## What each hook does
 
@@ -56,6 +57,22 @@ Claude as context it can act on.
 
 PostToolUse cannot block; it can only add context, so `format-file.sh`
 formats and stays quiet.
+
+### Other agents
+
+The same scripts serve Cursor and GitHub Copilot. `hookio.py` reads each
+agent's event shape and writes the decision in its dialect, chosen with
+`--format` (or `SDLC_HOOK_FORMAT`):
+
+| `--format` | For | Deny looks like |
+|---|---|---|
+| `claude` (default) | Claude Code | `hookSpecificOutput.permissionDecision: "deny"`, exit 0 |
+| `cursor` | Cursor | `{"permission": "deny", "agent_message": …}`, exit 0 |
+| `copilot` | Copilot in VS Code, the CLI and the cloud agent | exit 2, reason on stderr |
+| `exit` | anything else | exit 2, reason on stderr |
+
+With no `--format`, nothing changes for Claude Code. The agent-agnostic mirror
+installs these scripts with the hook configuration each agent reads.
 
 ## Before trusting any of this
 

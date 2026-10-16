@@ -5,3 +5,5 @@ templates/evals/results/
 Thumbs.db
 *.plugin
 __pycache__/
+build/
+Claude outputs/
